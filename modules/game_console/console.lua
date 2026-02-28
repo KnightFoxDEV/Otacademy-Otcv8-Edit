@@ -533,18 +533,37 @@ function toggleChatHidden()
   local gameBottomPanel = modules.game_interface.getBottomPanel()
   if not gameBottomPanel then return end
 
-  -- Toggle visibility of the entire bottom panel.
-  -- setVisible is NOT persisted between sessions (unlike splitter margins),
-  -- so reopening the client always shows the chat normally.
+  local classic = modules.client_options.getOption('classicView') and not g_app.isMobile()
+  local rootPanel = modules.game_interface.getRootPanel()
+  local mapPanel = modules.game_interface.getMapPanel()
+
   if gameBottomPanel:isVisible() then
+    -- HIDE
     gameBottomPanel:hide()
+    if classic and rootPanel and mapPanel then
+      -- In classic mode the map is anchored above the chat area.
+      -- Expand it to fill the screen and hide the splitter/action bar
+      local splitter = rootPanel:getChildById('bottomSplitter')
+      local bottomActionPanel = rootPanel:getChildById('gameBottomActionPanel')
+      if splitter then splitter:hide() end
+      if bottomActionPanel then bottomActionPanel:hide() end
+      mapPanel:addAnchor(AnchorBottom, 'parent', AnchorBottom)
+    end
   else
+    -- SHOW
     gameBottomPanel:show()
+    if classic and rootPanel and mapPanel then
+      -- Restore map anchor and show splitter/action bar
+      local splitter = rootPanel:getChildById('bottomSplitter')
+      local bottomActionPanel = rootPanel:getChildById('gameBottomActionPanel')
+      mapPanel:addAnchor(AnchorBottom, 'gameBottomActionPanel', AnchorTop)
+      if bottomActionPanel then bottomActionPanel:show() end
+      if splitter then splitter:show() end
+    end
   end
 
   -- determine if chat is now hidden
   local chatIsHidden = not gameBottomPanel:isVisible()
-  local rootPanel = modules.game_interface.getRootPanel()
 
   if chatIsHidden then
     if consoleFloatingButton and not consoleFloatingButton:isDestroyed() then

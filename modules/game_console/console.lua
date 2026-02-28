@@ -542,21 +542,24 @@ function toggleChatHidden()
     gameBottomPanel:hide()
     if classic and rootPanel and mapPanel then
       -- In classic mode the map is anchored above the chat area.
-      -- Expand it to fill the screen and hide the splitter/action bar
+      -- Expand it to fill the screen and hide the splitter/action bar.
+      -- Reduce zoom so the map doesn't appear too zoomed in.
       local splitter = rootPanel:getChildById('bottomSplitter')
       local bottomActionPanel = rootPanel:getChildById('gameBottomActionPanel')
       if splitter then splitter:hide() end
       if bottomActionPanel then bottomActionPanel:hide() end
       mapPanel:addAnchor(AnchorBottom, 'parent', AnchorBottom)
+      mapPanel:setZoom(13)
     end
   else
     -- SHOW
     gameBottomPanel:show()
     if classic and rootPanel and mapPanel then
-      -- Restore map anchor and show splitter/action bar
+      -- Restore map anchor, zoom and show splitter/action bar
       local splitter = rootPanel:getChildById('bottomSplitter')
       local bottomActionPanel = rootPanel:getChildById('gameBottomActionPanel')
       mapPanel:addAnchor(AnchorBottom, 'gameBottomActionPanel', AnchorTop)
+      mapPanel:setZoom(13)
       if bottomActionPanel then bottomActionPanel:show() end
       if splitter then splitter:show() end
     end

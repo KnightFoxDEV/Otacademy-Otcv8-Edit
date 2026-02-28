@@ -141,11 +141,25 @@ ConsolePanel < Panel
     id: ignoreButton
     !tooltip: tr('Ignore players')
     icon: /images/game/console/ignore
-    anchors.right: parent.right
+    anchors.right: next.left
     anchors.top: parent.top
     margin-right: 5
     margin-top: 6
     @onClick: onClickIgnoreButton()
+
+  TabButton
+    id: hideChatButton
+    !tooltip: tr('Hide Chat SHIFT+ENTER')
+    icon: /images/game/console/downarrow
+    anchors.right: parent.right
+    anchors.top: parent.top
+    margin-right: 5
+    margin-top: 6
+    size: 21 21
+    icon-clip: 0 0 16 16
+
+    $pressed:
+      icon-clip: 0 16 16 16
 
   Panel
     id: consoleContentPanel

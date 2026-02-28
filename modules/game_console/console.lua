@@ -82,6 +82,7 @@ violationWindow = nil
 violationReportTab = nil
 ignoredChannels = {}
 filters = {}
+consoleFloatingButton = nil
 
 floatingMode = false
 
@@ -151,6 +152,8 @@ function init()
   Keybind.new("Chat Mode", "Set On", "", "")
   Keybind.new("Chat Mode", "Set On Temporarily", { [CHAT_MODE.ON] = "", [CHAT_MODE.OFF] = "Enter" }, "")
 
+  Keybind.new("Chat", "Toggle Chat Visibility", "Shift+Enter", "")
+
   local gameRootPanel = modules.game_interface.getRootPanel()
   Keybind.bind("Chat Channel", "Close Current Channel", {
     {
@@ -215,6 +218,13 @@ function init()
     }
   }, gameRootPanel)
 
+  Keybind.bind("Chat", "Toggle Chat Visibility", {
+    {
+      type = KEY_DOWN,
+      callback = toggleChatHidden,
+    }
+  }, gameRootPanel)
+
   g_keyboard.bindKeyPress('Shift+Up', function() navigateMessageHistory(1) end, consolePanel)
   g_keyboard.bindKeyPress('Shift+Down', function() navigateMessageHistory(-1) end, consolePanel)
   g_keyboard.bindKeyPress('Ctrl+A', function() consoleTextEdit:clearText() end, consolePanel)
@@ -224,11 +234,33 @@ function init()
   consoleTabBar.onTabChange = onTabChange
 
   consoleToggleChat = consolePanel:getChildById('toggleChat')
+
+  -- bind hide chat button if it exists (retro layout)
+  local hideChatBtn = consolePanel:getChildById('hideChatButton')
+  if hideChatBtn then
+    hideChatBtn.onClick = function()
+      toggleChatHidden()
+    end
+  end
+
   load()
 
   if g_game.isOnline() then
     online()
   end
+
+  -- Fix: bottomSplitter uses relative-margin which auto-saves marginBottom.
+  -- If the client was closed while chat was hidden (splitter at 0), it would
+  -- start collapsed next time. Reset it to a valid position on startup.
+  addEvent(function()
+    if not modules.game_interface then return end
+    local gameRootPanel = modules.game_interface.getRootPanel()
+    if not gameRootPanel then return end
+    local splitter = gameRootPanel:getChildById('bottomSplitter')
+    if splitter and splitter:getMarginBottom() < 80 then
+      splitter:setMarginBottom(150)
+    end
+  end)
 end
 
 function clearSelection(consoleBuffer)
@@ -378,6 +410,25 @@ function terminate()
   consoleToggleChat = nil
   consoleTextEdit = nil
 
+  -- If chat was hidden, restore the splitter before destroying so the state
+  -- is not persisted as collapsed when the client is reopened
+  if consolePanel and not consolePanel:isVisible() then
+    local gameRootPanel = modules.game_interface.getRootPanel()
+    local splitter = gameRootPanel and gameRootPanel:getChildById('bottomSplitter')
+    if splitter then
+      local savedMargin = consolePanel._savedSplitterMargin or 150
+      local savedCallback = consolePanel._savedSplitterCallback
+      splitter:setMarginBottom(savedMargin)
+      splitter.onGeometryChange = savedCallback
+    end
+    consolePanel:show()
+  end
+
+  if consoleFloatingButton then
+    consoleFloatingButton:destroy()
+    consoleFloatingButton = nil
+  end
+
   consolePanel:destroy()
   consolePanel = nil
   ownPrivateName = nil
@@ -477,6 +528,61 @@ function switchMode(newView)
   --consoleTabBar:setDraggable(floating)
   --floatingMode = floating
 end
+
+function toggleChatHidden()
+  local gameBottomPanel = modules.game_interface.getBottomPanel()
+  if not gameBottomPanel then return end
+
+  -- Toggle visibility of the entire bottom panel.
+  -- setVisible is NOT persisted between sessions (unlike splitter margins),
+  -- so reopening the client always shows the chat normally.
+  if gameBottomPanel:isVisible() then
+    gameBottomPanel:hide()
+  else
+    gameBottomPanel:show()
+  end
+
+  -- determine if chat is now hidden
+  local chatIsHidden = not gameBottomPanel:isVisible()
+  local rootPanel = modules.game_interface.getRootPanel()
+
+  if chatIsHidden then
+    if consoleFloatingButton and not consoleFloatingButton:isDestroyed() then
+      consoleFloatingButton:destroy()
+    end
+    if g_app.isMobile() then
+      consoleFloatingButton = g_ui.createWidget('GameAction', rootPanel)
+      consoleFloatingButton:setId('consoleFloatingButton')
+      consoleFloatingButton.image:setImageSource('/images/game/mobile/chat')
+      consoleFloatingButton:addAnchor(AnchorRight, 'parent', AnchorRight)
+      consoleFloatingButton:addAnchor(AnchorBottom, 'parent', AnchorBottom)
+      local joystickH = modules.game_joystick and modules.game_joystick.getPanel() and modules.game_joystick.getPanel():getHeight() or 140
+      consoleFloatingButton:setMarginBottom(joystickH)
+      consoleFloatingButton:setMarginRight(15)
+      consoleFloatingButton:setSize('60 60')
+    else
+      consoleFloatingButton = g_ui.createWidget('TabButton', rootPanel)
+      consoleFloatingButton:setId('consoleFloatingButton')
+      consoleFloatingButton:setIcon('/images/game/console/uparrow')
+      consoleFloatingButton:setTooltip(tr('Show Chat'))
+      consoleFloatingButton:addAnchor(AnchorRight, 'parent', AnchorRight)
+      consoleFloatingButton:addAnchor(AnchorBottom, 'parent', AnchorBottom)
+      consoleFloatingButton:setMarginBottom(5)
+      consoleFloatingButton:setMarginRight(5)
+      consoleFloatingButton:setSize('20 20')
+    end
+    consoleFloatingButton.onClick = function()
+      toggleChatHidden()
+    end
+  else
+    if consoleFloatingButton and not consoleFloatingButton:isDestroyed() then
+      consoleFloatingButton:destroy()
+      consoleFloatingButton = nil
+    end
+  end
+end
+
+
 
 function onDragEnter(widget, pos)
   return floatingMode

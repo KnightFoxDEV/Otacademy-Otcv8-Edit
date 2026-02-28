@@ -7,9 +7,9 @@ DEFAULT_LAYOUT = "retro" -- on android it's forced to "mobile", check code bello
 Services = {}
 
 -- Servers accept http login url, websocket login url or ip: port:version
-Servers = {
-  LocalHost = "127.0.0.1:7171:1100",
-}
+--Servers = {
+ -- LocalHost = "127.0.0.1:7171:1100",
+--}
 
 --Server = "ws://otclient.ovh:3000/"
 --Server = "ws://127.0.0.1:88/"
